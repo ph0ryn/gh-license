@@ -1,5 +1,5 @@
 {
-  description = "wip";
+  description = "Create a LICENSE file from GitHub license templates";
 
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -47,13 +47,12 @@
                     final.fzf
                     final.gawk
                     final.gh
-                    final.ghq
                   ]
                 }
             '';
 
             meta = {
-              description = "Pick a GitHub repository with fzf and clone it with ghq";
+              description = "Pick a GitHub license template with fzf and write LICENSE";
               homepage = "https://github.com/ph0ryn/gh-license";
               license = final.lib.licenses.mit;
               mainProgram = "gh-license";

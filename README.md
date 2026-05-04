@@ -48,7 +48,17 @@ Then add extension in `gh` config
 
 ## Usage
 
-wip
+Pick a license with `fzf` and write it to `LICENSE`.
+
+```sh
+gh license
+```
+
+Or pass an SPDX ID directly.
+
+```sh
+gh license -- MIT
+```
 
 ## Requirements
 

@@ -1,4 +1,123 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "gh-license"
+usage() {
+  cat <<'EOF'
+Usage:
+  gh license [--] [SPDX_ID]
+
+Examples:
+  gh license
+  gh license -- MIT
+EOF
+}
+
+die() {
+  printf 'gh-license: %s\n' "$*" >&2
+  exit 1
+}
+
+need_command() {
+  command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+normalize_args() {
+  local arg
+
+  for arg in "$@"; do
+    case "$arg" in
+      -h|--help)
+        return 2
+        ;;
+      --)
+        ;;
+      *)
+        printf '%s\n' "$arg"
+        return 0
+        ;;
+    esac
+  done
+}
+
+select_license() {
+  local licenses spdx_id selected line_spdx line_key line_name
+
+  spdx_id="${1:-}"
+  licenses="$(gh api licenses --jq '.[] | [.spdx_id, .key, .name] | @tsv')"
+
+  if [[ -n "$spdx_id" ]]; then
+    while IFS=$'\t' read -r line_spdx line_key line_name; do
+      if [[ "$line_spdx" == "$spdx_id" ]]; then
+        printf '%s\t%s\t%s\n' "$line_spdx" "$line_key" "$line_name"
+        return 0
+      fi
+    done <<< "$licenses"
+
+    die "license not found for SPDX ID: $spdx_id"
+  fi
+
+  need_command fzf
+  need_command awk
+  selected="$(
+    printf '%s\n' "$licenses" \
+      | awk -F '\t' '
+          {
+            spdx_id[NR] = $1
+            key[NR] = $2
+            name[NR] = $3
+
+            if (length($1) > max) {
+              max = length($1)
+            }
+          }
+
+          END {
+            for (i = 1; i <= NR; i++) {
+              printf "%s\t%s\t%s\t%-*s  \033[2;37m%s\033[0m\n", spdx_id[i], key[i], name[i], max, spdx_id[i], name[i]
+            }
+          }
+        ' \
+      | fzf \
+          --ansi \
+          --prompt='License> ' \
+          --height=40% \
+          --layout=reverse \
+          --border \
+          --delimiter=$'\t' \
+          --with-nth=4
+  )"
+
+  [[ -n "$selected" ]] || die "no license selected"
+  printf '%s\n' "$selected" | cut -f1-3
+}
+
+write_license() {
+  local license_line spdx_id key name body
+
+  license_line="$1"
+  IFS=$'\t' read -r spdx_id key name <<< "$license_line"
+
+  body="$(gh api "licenses/$key" --jq .body)"
+
+  printf '%s\n' "$body" > LICENSE
+  printf 'Wrote LICENSE using %s (%s).\n' "$spdx_id" "$name"
+}
+
+main() {
+  local spdx_id license_line
+
+  need_command gh
+
+  spdx_id="$(normalize_args "$@")" || {
+    if [[ "$?" -eq 2 ]]; then
+      usage
+      exit 0
+    fi
+
+    exit 1
+  }
+  license_line="$(select_license "$spdx_id")"
+  write_license "$license_line"
+}
+
+main "$@"

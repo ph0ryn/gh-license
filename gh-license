@@ -77,21 +77,7 @@ normalize_args() {
 }
 
 select_license() {
-  local licenses spdx_id selected
-
-  spdx_id="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
-
-  if [[ -n "$spdx_id" ]]; then
-    if ! selected="$(
-      curl -fsSL "${LICENSE_API_URL}/$spdx_id" \
-        | jq -er '[.key, .key, .name] | @tsv'
-    )"; then
-      die "license not found for key: $spdx_id"
-    fi
-
-    printf '%s\n' "$selected"
-    return 0
-  fi
+  local licenses selected
 
   need_command fzf
   need_command awk
@@ -133,7 +119,7 @@ select_license() {
 }
 
 write_license() {
-  local license_line spdx_id key name fullname body
+  local license_line spdx_id key name fullname body response
 
   license_line="$1"
   IFS=$'\t' read -r spdx_id key name <<< "$license_line"
@@ -146,13 +132,16 @@ write_license() {
     fullname="$(gh api user --jq '.login')" || die "failed to get GitHub user"
   fi
 
-  if ! body="$(
+  if ! response="$(
     curl -fsSL --get "${LICENSE_API_URL}/$key" \
-      --data-urlencode "fullname=$fullname" \
-      | jq -er .content
+      --data-urlencode "fullname=$fullname"
   )"; then
     die "failed to fetch license template: $key"
   fi
+
+  spdx_id="$(printf '%s\n' "$response" | jq -er .key)" || die "failed to parse license template: $key"
+  name="$(printf '%s\n' "$response" | jq -er .name)" || die "failed to parse license template: $key"
+  body="$(printf '%s\n' "$response" | jq -er .content)" || die "failed to parse license template: $key"
 
   if [[ "$DRY_RUN" == true ]]; then
     printf '%s\n' "$body"
@@ -179,7 +168,12 @@ main() {
     exit 1
   }
   ensure_can_write_license
-  license_line="$(select_license "$LICENSE_KEY")"
+  if [[ -n "$LICENSE_KEY" ]]; then
+    LICENSE_KEY="$(printf '%s' "$LICENSE_KEY" | tr '[:upper:]' '[:lower:]')"
+    license_line="$(printf '%s\t%s\t%s\n' "$LICENSE_KEY" "$LICENSE_KEY" "$LICENSE_KEY")"
+  else
+    license_line="$(select_license)"
+  fi
   write_license "$license_line"
 }
 

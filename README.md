@@ -54,23 +54,23 @@ Pick a license with `fzf` and write it to `LICENSE`.
 gh license
 ```
 
-Or pass a license key directly.
+Or pass a license key directly as an argument.
 
 ```sh
-gh license -- MIT
+gh license MIT
 ```
 
 By default, `gh license` exits without writing when `LICENSE` already exists.
 Use `--force` or `-f` to overwrite it.
 
 ```sh
-gh license --force -- MIT
+gh license --force MIT
 ```
 
 Print the generated license without writing `LICENSE` with `--dry-run` or `-d`.
 
 ```sh
-gh license --dry-run -- MIT
+gh license --dry-run MIT
 ```
 
 This extension uses the GitLab license template API because it supports

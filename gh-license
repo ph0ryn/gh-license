@@ -9,13 +9,16 @@ LICENSE_KEY=
 usage() {
   cat <<'EOF'
 Usage:
-  gh license [--dry-run|-d] [--force|-f] [--] [LICENSE_KEY]
+  gh license [--dry-run|-d] [--force|-f] [LICENSE_KEY]
+
+Arguments:
+  LICENSE_KEY  License key to use directly instead of selecting with fzf
 
 Examples:
   gh license
-  gh license --dry-run -- MIT
-  gh license --force -- MIT
-  gh license -- MIT
+  gh license --dry-run MIT
+  gh license --force MIT
+  gh license MIT
 EOF
 }
 

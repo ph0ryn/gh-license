@@ -20,7 +20,7 @@
         overlays.default = final: _prev: {
           gh-license = final.stdenvNoCC.mkDerivation {
             pname = "gh-license";
-            version = "0.1.0";
+            version = "0.1.1";
 
             src = self;
 

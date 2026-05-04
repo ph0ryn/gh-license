@@ -81,6 +81,7 @@ template generation with a user name.
 - [gh](https://cli.github.com/)
 - [curl](https://curl.se/)
 - [fzf](https://github.com/junegunn/fzf)
+- [awk](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/awk.html)
 - [jq](https://jqlang.org/)
 
 ## License

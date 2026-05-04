@@ -31,6 +31,17 @@ need_command() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
 }
 
+ensure_can_write_license() {
+  if [[ -e LICENSE && "$FORCE" != true && "$DRY_RUN" != true ]]; then
+    die "LICENSE already exists; use --force to overwrite"
+  fi
+}
+
+fetch_licenses() {
+  curl -fsSL "${LICENSE_API_URL}?per_page=100" \
+    | jq -r '.[] | [.key, .key, .name] | @tsv'
+}
+
 normalize_args() {
   local arg parsing_options
 
@@ -66,25 +77,27 @@ normalize_args() {
 }
 
 select_license() {
-  local licenses spdx_id selected line_spdx line_key line_name
+  local licenses spdx_id selected
 
   spdx_id="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
-  licenses="$(curl -fsSL "${LICENSE_API_URL}?per_page=100" | jq -r '.[] | [.key, .key, .name] | @tsv')"
 
   if [[ -n "$spdx_id" ]]; then
-    while IFS=$'\t' read -r line_spdx line_key line_name; do
-      if [[ "$line_spdx" == "$spdx_id" ]]; then
-        printf '%s\t%s\t%s\n' "$line_spdx" "$line_key" "$line_name"
-        return 0
-      fi
-    done <<< "$licenses"
+    if ! selected="$(
+      curl -fsSL "${LICENSE_API_URL}/$spdx_id" \
+        | jq -er '[.key, .key, .name] | @tsv'
+    )"; then
+      die "license not found for key: $spdx_id"
+    fi
 
-    die "license not found for key: $spdx_id"
+    printf '%s\n' "$selected"
+    return 0
   fi
 
   need_command fzf
   need_command awk
-  selected="$(
+
+  licenses="$(fetch_licenses)"
+  if ! selected="$(
     printf '%s\n' "$licenses" \
       | awk -F '\t' '
           {
@@ -111,7 +124,9 @@ select_license() {
           --border \
           --delimiter=$'\t' \
           --with-nth=4
-  )"
+  )"; then
+    die "no license selected"
+  fi
 
   [[ -n "$selected" ]] || die "no license selected"
   printf '%s\n' "$selected" | cut -f1-3
@@ -123,25 +138,25 @@ write_license() {
   license_line="$1"
   IFS=$'\t' read -r spdx_id key name <<< "$license_line"
 
-  fullname="$(gh api user --jq '.name // .login')"
+  ensure_can_write_license
+
+  fullname="$(gh api user --jq '.name // .login')" || die "failed to get GitHub user"
 
   if [[ -z "$fullname" || "$fullname" == "null" ]]; then
-    fullname="$(gh api user --jq '.login')"
+    fullname="$(gh api user --jq '.login')" || die "failed to get GitHub user"
   fi
 
-  body="$(
+  if ! body="$(
     curl -fsSL --get "${LICENSE_API_URL}/$key" \
       --data-urlencode "fullname=$fullname" \
-      | jq -r .content
-  )"
+      | jq -er .content
+  )"; then
+    die "failed to fetch license template: $key"
+  fi
 
   if [[ "$DRY_RUN" == true ]]; then
     printf '%s\n' "$body"
     return 0
-  fi
-
-  if [[ -e LICENSE && "$FORCE" != true ]]; then
-    die "LICENSE already exists; use --force to overwrite"
   fi
 
   printf '%s\n' "$body" > LICENSE
@@ -163,6 +178,7 @@ main() {
 
     exit 1
   }
+  ensure_can_write_license
   license_line="$(select_license "$LICENSE_KEY")"
   write_license "$license_line"
 }

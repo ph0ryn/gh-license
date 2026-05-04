@@ -60,11 +60,6 @@ set_output_file() {
   OUTPUT_FILE="$name"
 }
 
-fetch_licenses() {
-  curl -fsSL "${LICENSE_API_URL}?per_page=100" \
-    | jq -r '.[] | [.key, .name] | @tsv'
-}
-
 normalize_args() {
   local arg parsing_options expecting_output
 
@@ -127,13 +122,15 @@ select_license() {
   need_command fzf
   need_command awk
 
-  licenses="$(fetch_licenses)"
+  licenses="$(curl -fsSL "${LICENSE_API_URL}?per_page=100")" || die "failed to fetch license templates"
   if ! selected="$(
     printf '%s\n' "$licenses" \
+      | jq -r '.[] | [.key, .name, .content] | @tsv' \
       | awk -F '\t' '
           {
             key[NR] = $1
             name[NR] = $2
+            content[NR] = $3
 
             if (length($1) > max) {
               max = length($1)
@@ -142,7 +139,7 @@ select_license() {
 
           END {
             for (i = 1; i <= NR; i++) {
-              printf "%s\t%s\t%-*s  \033[2;37m%s\033[0m\n", key[i], name[i], max, key[i], name[i]
+              printf "%s\t%s\t%s\t%-*s  \033[2;37m%s\033[0m\n", key[i], name[i], content[i], max, key[i], name[i]
             }
           }
         ' \
@@ -153,7 +150,9 @@ select_license() {
           --layout=reverse \
           --border \
           --delimiter=$'\t' \
-          --with-nth=3
+          --with-nth=4 \
+          --preview='printf "%b" {3}' \
+          --preview-window='right:60%:wrap'
   )"; then
     die "no license selected"
   fi

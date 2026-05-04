@@ -2,14 +2,17 @@
 set -euo pipefail
 
 readonly LICENSE_API_URL='https://gitlab.com/api/v4/templates/licenses'
+DRY_RUN=false
+LICENSE_KEY=
 
 usage() {
   cat <<'EOF'
 Usage:
-  gh license [--] [LICENSE_KEY]
+  gh license [--dry-run] [--] [LICENSE_KEY]
 
 Examples:
   gh license
+  gh license --dry-run -- MIT
   gh license -- MIT
 EOF
 }
@@ -31,10 +34,13 @@ normalize_args() {
       -h|--help)
         return 2
         ;;
+      --dry-run)
+        DRY_RUN=true
+        ;;
       --)
         ;;
       *)
-        printf '%s\n' "$arg"
+        LICENSE_KEY="$arg"
         return 0
         ;;
     esac
@@ -111,18 +117,23 @@ write_license() {
       | jq -r .content
   )"
 
+  if [[ "$DRY_RUN" == true ]]; then
+    printf '%s\n' "$body"
+    return 0
+  fi
+
   printf '%s\n' "$body" > LICENSE
   printf 'Wrote LICENSE using %s (%s) for %s.\n' "$spdx_id" "$name" "$fullname"
 }
 
 main() {
-  local spdx_id license_line
+  local license_line
 
   need_command gh
   need_command curl
   need_command jq
 
-  spdx_id="$(normalize_args "$@")" || {
+  normalize_args "$@" || {
     if [[ "$?" -eq 2 ]]; then
       usage
       exit 0
@@ -130,7 +141,7 @@ main() {
 
     exit 1
   }
-  license_line="$(select_license "$spdx_id")"
+  license_line="$(select_license "$LICENSE_KEY")"
   write_license "$license_line"
 }
 

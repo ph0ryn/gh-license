@@ -60,6 +60,12 @@ Or pass a license key directly.
 gh license -- MIT
 ```
 
+Print the generated license without writing `LICENSE`.
+
+```sh
+gh license --dry-run -- MIT
+```
+
 ## Requirements
 
 - [gh](https://cli.github.com/)

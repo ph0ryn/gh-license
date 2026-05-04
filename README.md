@@ -67,6 +67,12 @@ Use `--force` or `-f` to overwrite it.
 gh license --force MIT
 ```
 
+Write to a different file name in the current directory with `--ouput` or `-o`.
+
+```sh
+gh license --ouput LICENSE.md MIT
+```
+
 Print the generated license without writing `LICENSE` with `--dry-run` or `-d`.
 
 ```sh

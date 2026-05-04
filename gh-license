@@ -5,11 +5,12 @@ readonly LICENSE_API_URL='https://gitlab.com/api/v4/templates/licenses'
 DRY_RUN=false
 FORCE=false
 LICENSE_KEY=
+OUTPUT_FILE=LICENSE
 
 usage() {
   cat <<'EOF'
 Usage:
-  gh license [--dry-run|-d] [--force|-f] [LICENSE_KEY]
+  gh license [--dry-run|-d] [--force|-f] [--ouput|-o NAME] [LICENSE_KEY]
 
 Arguments:
   LICENSE_KEY  License key to use directly instead of selecting with fzf
@@ -18,6 +19,7 @@ Examples:
   gh license
   gh license --dry-run MIT
   gh license --force MIT
+  gh license --ouput COPYING MIT
   gh license MIT
 EOF
 }
@@ -32,9 +34,20 @@ need_command() {
 }
 
 ensure_can_write_license() {
-  if [[ -e LICENSE && "$FORCE" != true && "$DRY_RUN" != true ]]; then
-    die "LICENSE already exists; use --force to overwrite"
+  if [[ -e "$OUTPUT_FILE" && "$FORCE" != true && "$DRY_RUN" != true ]]; then
+    die "$OUTPUT_FILE already exists; use --force to overwrite"
   fi
+}
+
+set_output_file() {
+  local name
+
+  name="$1"
+  [[ -n "$name" ]] || die "output file name cannot be empty"
+  [[ "$name" != "." && "$name" != ".." ]] || die "invalid output file name: $name"
+  [[ "$name" != */* ]] || die "output file name must be in the current directory: $name"
+
+  OUTPUT_FILE="$name"
 }
 
 fetch_licenses() {
@@ -43,11 +56,18 @@ fetch_licenses() {
 }
 
 normalize_args() {
-  local arg parsing_options
+  local arg parsing_options expecting_output
 
   parsing_options=true
+  expecting_output=false
 
   for arg in "$@"; do
+    if [[ "$expecting_output" == true ]]; then
+      set_output_file "$arg"
+      expecting_output=false
+      continue
+    fi
+
     if [[ "$parsing_options" == true ]]; then
       case "$arg" in
         -h|--help)
@@ -59,6 +79,18 @@ normalize_args() {
           ;;
         -f|--force)
           FORCE=true
+          continue
+          ;;
+        -o|--ouput|--output)
+          expecting_output=true
+          continue
+          ;;
+        -o?*)
+          set_output_file "${arg#-o}"
+          continue
+          ;;
+        --ouput=*|--output=*)
+          set_output_file "${arg#*=}"
           continue
           ;;
         --)
@@ -74,6 +106,8 @@ normalize_args() {
     [[ -z "$LICENSE_KEY" ]] || die "too many arguments: $arg"
     LICENSE_KEY="$arg"
   done
+
+  [[ "$expecting_output" != true ]] || die "missing output file name"
 }
 
 select_license() {
@@ -147,8 +181,8 @@ write_license() {
     return 0
   fi
 
-  printf '%s\n' "$body" > LICENSE
-  printf 'Wrote LICENSE using %s (%s) for %s.\n' "$response_key" "$name" "$fullname"
+  printf '%s\n' "$body" > "$OUTPUT_FILE"
+  printf 'Wrote %s using %s (%s) for %s.\n' "$OUTPUT_FILE" "$response_key" "$name" "$fullname"
 }
 
 main() {

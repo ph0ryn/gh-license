@@ -67,13 +67,14 @@ Use `--force` or `-f` to overwrite it.
 gh license --force MIT
 ```
 
-Write to a different file name in the current directory with `--ouput` or `-o`.
+Write to a different file name in the current directory with `--output` or `-o`.
 
 ```sh
-gh license --ouput LICENSE.md MIT
+gh license --output LICENSE.md MIT
 ```
 
 Print the generated license without writing `LICENSE` with `--dry-run` or `-d`.
+Dry run mode cannot be combined with `--force` or `--output`.
 
 ```sh
 gh license --dry-run MIT

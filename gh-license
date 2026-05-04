@@ -10,7 +10,8 @@ OUTPUT_FILE=LICENSE
 usage() {
   cat <<'EOF'
 Usage:
-  gh license [--dry-run|-d] [--force|-f] [--ouput|-o NAME] [LICENSE_KEY]
+  gh license [--dry-run|-d] [LICENSE_KEY]
+  gh license [--force|-f] [--output|-o NAME] [LICENSE_KEY]
 
 Arguments:
   LICENSE_KEY  License key to use directly instead of selecting with fzf
@@ -19,7 +20,7 @@ Examples:
   gh license
   gh license --dry-run MIT
   gh license --force MIT
-  gh license --ouput COPYING MIT
+  gh license --output COPYING MIT
   gh license MIT
 EOF
 }
@@ -27,6 +28,13 @@ EOF
 die() {
   printf 'gh-license: %s\n' "$*" >&2
   exit 1
+}
+
+enable_dry_run() {
+  [[ "$FORCE" != true ]] || die "--dry-run cannot be used with --force"
+  [[ "$OUTPUT_FILE" == LICENSE ]] || die "--dry-run cannot be used with --output"
+
+  DRY_RUN=true
 }
 
 need_command() {
@@ -41,6 +49,8 @@ ensure_can_write_license() {
 
 set_output_file() {
   local name
+
+  [[ "$DRY_RUN" != true ]] || die "--output cannot be used with --dry-run"
 
   name="$1"
   [[ -n "$name" ]] || die "output file name cannot be empty"
@@ -74,14 +84,15 @@ normalize_args() {
           return 2
           ;;
         -d|--dry-run)
-          DRY_RUN=true
+          enable_dry_run
           continue
           ;;
         -f|--force)
+          [[ "$DRY_RUN" != true ]] || die "--force cannot be used with --dry-run"
           FORCE=true
           continue
           ;;
-        -o|--ouput|--output)
+        -o|--output)
           expecting_output=true
           continue
           ;;
@@ -89,7 +100,7 @@ normalize_args() {
           set_output_file "${arg#-o}"
           continue
           ;;
-        --ouput=*|--output=*)
+        --output=*)
           set_output_file "${arg#*=}"
           continue
           ;;

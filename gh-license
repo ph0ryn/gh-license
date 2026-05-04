@@ -153,7 +153,7 @@ select_license() {
           --layout=reverse \
           --border \
           --delimiter=$'\t' \
-          --with-nth=4
+          --with-nth=3
   )"; then
     die "no license selected"
   fi

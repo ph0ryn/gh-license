@@ -1,6 +1,6 @@
 # gh-license
 
-`gh` extension that creates `LICENSE` files using the GitLab Licenses API.
+`gh` extension that creates `LICENSE` files using the [GitLab Licenses API](https://docs.gitlab.com/api/templates/licenses/).
 
 ## Installation
 

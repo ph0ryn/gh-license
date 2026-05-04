@@ -3,16 +3,18 @@ set -euo pipefail
 
 readonly LICENSE_API_URL='https://gitlab.com/api/v4/templates/licenses'
 DRY_RUN=false
+FORCE=false
 LICENSE_KEY=
 
 usage() {
   cat <<'EOF'
 Usage:
-  gh license [--dry-run] [--] [LICENSE_KEY]
+  gh license [--dry-run|-d] [--force|-f] [--] [LICENSE_KEY]
 
 Examples:
   gh license
   gh license --dry-run -- MIT
+  gh license --force -- MIT
   gh license -- MIT
 EOF
 }
@@ -27,23 +29,36 @@ need_command() {
 }
 
 normalize_args() {
-  local arg
+  local arg parsing_options
+
+  parsing_options=true
 
   for arg in "$@"; do
-    case "$arg" in
-      -h|--help)
-        return 2
-        ;;
-      --dry-run)
-        DRY_RUN=true
-        ;;
-      --)
-        ;;
-      *)
-        LICENSE_KEY="$arg"
-        return 0
-        ;;
-    esac
+    if [[ "$parsing_options" == true ]]; then
+      case "$arg" in
+        -h|--help)
+          return 2
+          ;;
+        -d|--dry-run)
+          DRY_RUN=true
+          continue
+          ;;
+        -f|--force)
+          FORCE=true
+          continue
+          ;;
+        --)
+          parsing_options=false
+          continue
+          ;;
+        --*)
+          die "unknown option: $arg"
+          ;;
+      esac
+    fi
+
+    [[ -z "$LICENSE_KEY" ]] || die "too many arguments: $arg"
+    LICENSE_KEY="$arg"
   done
 }
 
@@ -120,6 +135,10 @@ write_license() {
   if [[ "$DRY_RUN" == true ]]; then
     printf '%s\n' "$body"
     return 0
+  fi
+
+  if [[ -e LICENSE && "$FORCE" != true ]]; then
+    die "LICENSE already exists; use --force to overwrite"
   fi
 
   printf '%s\n' "$body" > LICENSE

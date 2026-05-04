@@ -1,5 +1,5 @@
 {
-  description = "Create a LICENSE file from GitHub license templates";
+  description = "Create a LICENSE file from GitLab license templates";
 
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
@@ -54,7 +54,7 @@
             '';
 
             meta = {
-              description = "Pick a GitHub license template with fzf and write LICENSE";
+              description = "Pick a GitLab license template with fzf and write LICENSE";
               homepage = "https://github.com/ph0ryn/gh-license";
               license = final.lib.licenses.mit;
               mainProgram = "gh-license";

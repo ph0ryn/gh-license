@@ -1,6 +1,6 @@
 # gh-license
 
-Create a `LICENSE` file from GitLab license templates as a GitHub CLI extension.
+`gh` extension that creates `LICENSE` files using the GitLab Licenses API.
 
 ## Installation
 

@@ -39,7 +39,7 @@ ensure_can_write_license() {
 
 fetch_licenses() {
   curl -fsSL "${LICENSE_API_URL}?per_page=100" \
-    | jq -r '.[] | [.key, .key, .name] | @tsv'
+    | jq -r '.[] | [.key, .name] | @tsv'
 }
 
 normalize_args() {
@@ -87,9 +87,8 @@ select_license() {
     printf '%s\n' "$licenses" \
       | awk -F '\t' '
           {
-            spdx_id[NR] = $1
-            key[NR] = $2
-            name[NR] = $3
+            key[NR] = $1
+            name[NR] = $2
 
             if (length($1) > max) {
               max = length($1)
@@ -98,7 +97,7 @@ select_license() {
 
           END {
             for (i = 1; i <= NR; i++) {
-              printf "%s\t%s\t%s\t%-*s  \033[2;37m%s\033[0m\n", spdx_id[i], key[i], name[i], max, spdx_id[i], name[i]
+              printf "%s\t%s\t%-*s  \033[2;37m%s\033[0m\n", key[i], name[i], max, key[i], name[i]
             }
           }
         ' \
@@ -115,14 +114,14 @@ select_license() {
   fi
 
   [[ -n "$selected" ]] || die "no license selected"
-  printf '%s\n' "$selected" | cut -f1-3
+  printf '%s\n' "$selected" | cut -f1-2
 }
 
 write_license() {
-  local license_line spdx_id key name fullname body response
+  local license_line key name fullname body response response_key
 
   license_line="$1"
-  IFS=$'\t' read -r spdx_id key name <<< "$license_line"
+  IFS=$'\t' read -r key name <<< "$license_line"
 
   ensure_can_write_license
 
@@ -139,7 +138,7 @@ write_license() {
     die "failed to fetch license template: $key"
   fi
 
-  spdx_id="$(printf '%s\n' "$response" | jq -er .key)" || die "failed to parse license template: $key"
+  response_key="$(printf '%s\n' "$response" | jq -er .key)" || die "failed to parse license template: $key"
   name="$(printf '%s\n' "$response" | jq -er .name)" || die "failed to parse license template: $key"
   body="$(printf '%s\n' "$response" | jq -er .content)" || die "failed to parse license template: $key"
 
@@ -149,7 +148,7 @@ write_license() {
   fi
 
   printf '%s\n' "$body" > LICENSE
-  printf 'Wrote LICENSE using %s (%s) for %s.\n' "$spdx_id" "$name" "$fullname"
+  printf 'Wrote LICENSE using %s (%s) for %s.\n' "$response_key" "$name" "$fullname"
 }
 
 main() {
@@ -170,7 +169,7 @@ main() {
   ensure_can_write_license
   if [[ -n "$LICENSE_KEY" ]]; then
     LICENSE_KEY="$(printf '%s' "$LICENSE_KEY" | tr '[:upper:]' '[:lower:]')"
-    license_line="$(printf '%s\t%s\t%s\n' "$LICENSE_KEY" "$LICENSE_KEY" "$LICENSE_KEY")"
+    license_line="$(printf '%s\t%s\n' "$LICENSE_KEY" "$LICENSE_KEY")"
   else
     license_line="$(select_license)"
   fi

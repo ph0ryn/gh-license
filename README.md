@@ -54,7 +54,7 @@ Pick a license with `fzf` and write it to `LICENSE`.
 gh license
 ```
 
-Or pass an SPDX ID directly.
+Or pass a license key directly.
 
 ```sh
 gh license -- MIT
@@ -63,7 +63,9 @@ gh license -- MIT
 ## Requirements
 
 - [gh](https://cli.github.com/)
+- [curl](https://curl.se/)
 - [fzf](https://github.com/junegunn/fzf)
+- [jq](https://jqlang.org/)
 
 ## License
 

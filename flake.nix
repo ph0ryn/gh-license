@@ -44,9 +44,11 @@
                 --prefix PATH : ${
                   final.lib.makeBinPath [
                     final.coreutils
+                    final.curl
                     final.fzf
                     final.gawk
                     final.gh
+                    final.jq
                   ]
                 }
             '';

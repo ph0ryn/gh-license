@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+readonly LICENSE_API_URL='https://gitlab.com/api/v4/templates/licenses'
+
 usage() {
   cat <<'EOF'
 Usage:
-  gh license [--] [SPDX_ID]
+  gh license [--] [LICENSE_KEY]
 
 Examples:
   gh license
@@ -42,8 +44,8 @@ normalize_args() {
 select_license() {
   local licenses spdx_id selected line_spdx line_key line_name
 
-  spdx_id="${1:-}"
-  licenses="$(gh api licenses --jq '.[] | [.spdx_id, .key, .name] | @tsv')"
+  spdx_id="$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')"
+  licenses="$(curl -fsSL "${LICENSE_API_URL}?per_page=100" | jq -r '.[] | [.key, .key, .name] | @tsv')"
 
   if [[ -n "$spdx_id" ]]; then
     while IFS=$'\t' read -r line_spdx line_key line_name; do
@@ -53,7 +55,7 @@ select_license() {
       fi
     done <<< "$licenses"
 
-    die "license not found for SPDX ID: $spdx_id"
+    die "license not found for key: $spdx_id"
   fi
 
   need_command fzf
@@ -92,21 +94,33 @@ select_license() {
 }
 
 write_license() {
-  local license_line spdx_id key name body
+  local license_line spdx_id key name fullname body
 
   license_line="$1"
   IFS=$'\t' read -r spdx_id key name <<< "$license_line"
 
-  body="$(gh api "licenses/$key" --jq .body)"
+  fullname="$(gh api user --jq '.name // .login')"
+
+  if [[ -z "$fullname" || "$fullname" == "null" ]]; then
+    fullname="$(gh api user --jq '.login')"
+  fi
+
+  body="$(
+    curl -fsSL --get "${LICENSE_API_URL}/$key" \
+      --data-urlencode "fullname=$fullname" \
+      | jq -r .content
+  )"
 
   printf '%s\n' "$body" > LICENSE
-  printf 'Wrote LICENSE using %s (%s).\n' "$spdx_id" "$name"
+  printf 'Wrote LICENSE using %s (%s) for %s.\n' "$spdx_id" "$name" "$fullname"
 }
 
 main() {
   local spdx_id license_line
 
   need_command gh
+  need_command curl
+  need_command jq
 
   spdx_id="$(normalize_args "$@")" || {
     if [[ "$?" -eq 2 ]]; then
